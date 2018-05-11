@@ -1,0 +1,164 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+  
+  <meta content="text/html; charset=utf-8" http-equiv="content-type">
+  <title>Smart Grid Case Study</title>
+  <link rel="stylesheet" href="css.css">
+
+</head><body>
+
+      <center>
+      <font class="smalltitle">
+        Simplified Smart Grid<br />
+        A Case Study<br /><br />
+      </font>
+      </center>
+      
+      <center> A more verbose description of the model can be found in a <a href="cs-cmu-11-119.pdf">tech report</a>.<br /><br /></center>
+
+<table width="800px" align="center">
+  <tr><td class="consolemenu">&gt; Description_ </td></tr>
+  <tr>
+    <td class="fulltext">
+      <p>
+      "A <b>Smart Grid</b> is a form of electricity network using digital technology. A smart grid delivers
+      electricity from suppliers to consumers using two-way digital communications to control appliances
+      at consumers' homes; this could save energy, reduce costs and increase reliability and transparency if
+      the risks inherent in executing massive information technology projects are avoided. The "Smart Grid"
+      is envisioned to overlay the ordinary electrical grid with an information and net metering system, that
+      includes smart meters. Smart grids are being promoted by many governments as a way of addressing energy
+      independence, global warming and emergency resilience issues."
+      </p>
+      
+      Source: <a href="http://en.wikipedia.org/wiki/Smart_grid">Wikipedia</a><br />&nbsp;
+    </td>
+  </tr>
+  
+  <tr><td class="consolemenu">&gt; Model Description_ </td></tr>
+  <tr>
+    <td class="fulltext">
+    <p>
+    In this case study, we implement a simplified Smart Grid scenario in the Distributed Probabilistic-Control
+    Hybrid Automata framework. Our objective is to establish a basic working Smart Grid infrastructure and then check
+    its behaviour using Statistical Model Checking by verifying interesting properties specified in Quantified
+    Bounded Linear Temporal Logic. We obtain traces of 24h duration in this case study, each representing one day's
+    consumption. The model consists of 4 types of entities: <br />
+    . <b>Consumer</b>: this type of entity generates power demand that varies according to the time of day and its own lifecycle.
+    It is an abstract representation for sets of appliances that are turned on at roughly the same time for roughly the same duration.
+    To more accurately represent daily consumption of energy, several elements of this type can exist at the same time, and 
+    the overall demand is nothing more than the sum of their demands. Depending on the type of day at which consumers are
+    created in the system, they can behave in one of two ways: high-consumption short-span or low-consumption long-span, an
+    illustration for which can be found below.
+    <table width=0 align=center><tr>
+      <td><a href=consumer1.png><img src=consumer1.png width=400 height=289></a></td>
+      <td><a href=consumer2.png><img src=consumer2.png width=400 height=289></a></td>
+    </tr></table>
+    <br />
+    
+    . <b>Power Generators</b> are the producers of energy. The Smart Grid must dynamically match the output of
+    generators to the demand of the consumers. Generators can have different properties, mostly related to how
+    fast they adapt power output (e.g. maximum values of its first and second derivatives). Our current model
+    consists of a single, high-output generator.<br />
+    
+    . The <b>Power Controller</b> (PC) is the Smart Grid's nerve centre. It maintains up to date information about
+    consumer demand and generator output. It is in charge of adapting each generator's output to match demand.
+    Periodically, it applies a policy for changing a generator's requested output to match power and demand.<br />
+    
+    . The <b>Consumer Controller</b> (CC) is responsible for creating and keeping track of the consumers in the
+    system. It represents the <b>probabilistic environment</b>. Each trace of the CC and its consumers contains
+    energy consumption over the duration of one day. We have a bound of 20 on the number of consumers, and they
+    are spawned with a different probability depending on the time of day. At an interval given by a Normal
+    random variable of 5 minute mean and 1m variance, the CC decides whether to receive messages or spawn another
+    consumer. The probability distribution over these choices changes according to the time of day. If there is
+    a message indicated a consumer has left the system, it is received and the state updated accordingly.
+    Otherwise, the probability of spawning a new element is given by the following table. <br />&nbsp;
+    <table style="text-align: center; font-size: 12px;" align=center>
+    <tr class="consolemenu">
+    <td>1</td><td>2</td><td>3</td><td>4</td><td>5</td><td>6</td><td>7</td><td>8</td><td>9</td><td>10</td>
+    <td>11</td><td>12</td><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td><td>18</td><td>19</td><td>20</td>
+    <td>21</td><td>22</td><td>23</td><td>24</td>
+    </tr><tr>
+    <td>0.20</td><td>0.05</td><td>0.07</td><td>0.10</td><td>0.10</td><td>0.20</td><td>0.10</td><td>0.20</td><td>0.10</td><td>0.20</td>
+    <td>0.10</td><td>0.20</td><td>0.10</td><td>0.20</td><td>0.20</td><td>0.10</td><td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    <td>0.00</td><td>0.00</td><td>0.00</td><td>0.00</td>
+    </tr>
+    </table><br />
+    
+    High-demand consumers are spawned between 4am to 12pm, and low-demand but long-span for the rest of the day.
+    We thus model high consumption throughout the day and lower consumption during the evening and night. Two
+    examples of daily consumption generated by the current model can be found in the following graphs.
+    <table width=0 align=center><tr>
+      <td><a href=cons1.png><img src=cons1.png width=400px height=245></a></td>
+      <td><a href=cons2.png><img src=cons2.png width=400px height=245></a></td>
+    </tr></table>
+    <br />
+    </p>
+    </td>
+  </tr>
+  
+  <tr><td class="consolemenu">&gt; Automaton_ </td></tr>
+  <tr>
+    <td class="fulltext">
+    <p>
+      It is very hard to graphically represent DPCHA. An incomplete representation can be found below. We say it is
+      incomplete because we do not show each element's state, nor do we show the transition probabilities for more
+      than one element in each position (although there can be multiple elements at the same position, as the number
+      of dots in each location node show).
+    </p>
+    <center><img src=automaton.png /></center>
+     <p>
+      Zero probability in receive action edges simply means that no messages are available, or that
+      other edges, for one reason or another, are more important. For instance, more important messages
+      may be received first.
+    </p>
+    <p>
+      . In the <b>generator</b> component of the automaton, r<sub>g</sub> outputs a reusable channel based on the generator's ID
+      (which is part of its state), through which messages directed at it can be received. R<sub>g</sub>,
+      associated with the receive action, updates internal desired power generation according to a message sent by
+      the power controller. In the transmit action, t<sub>g</sub> is a constant function that returns a channel for
+      communicating generator output, and T<sub>g</sub> updates the time of the last feedback message. <br />
+      . In the <b>consumer</b>'s looped transmit action, c<sub>f</sub> outputs a constant channel used for consumer feedback.
+      C<sub>o</sub>, as T<sub>g</sub>, simply updates the time of the last sent message. The transmit action that
+      jumps an element to the "graveyard" uses t<sub>gr</sub> to get a channel for communicating the exit of a 
+      consumer element. In this case, I is the identity function, i.e. it has no effect on state. Once at the graveyard,
+      the consumer immediately exits the system. <br />
+      . The <b>power controller</b> receives generator output feedback messages through t<sub>g</sub> and
+      updates its internal expected generator output with G<sub>i</sub>. C<sub>i</sub> works the
+      same way for consumer feedback. G<sub>o</sub> and g<sub>o</sub> use a policy for deciding to
+      change the output of which generator (in our case, just one), and by how much. Internal state
+      is changed to reflect the desired changes. <br />
+      . The <b>consumer controller</b> maintains up to date information about which consumers exist.
+      In particular, C<sub>d</sub> changes the internal state of the CC to indicate that the
+      consumer source of the message has exited the system. The CC is also in charge of creating
+      consumers with the edge annotated with a new action. N is the function that decides the new
+      element's state. Its location will always be the consumer location, but the state and
+      evolution depend, as seen previously, on the time of day.
+    </p>
+    <p>
+      Messages sent over feedback channels that are used by several elements in the system generally
+      contain an element's ID. This ID never changes over time. This allows the receiving element's
+      state to be updated according to this ID. The PC, for instance, maintains information about
+      all the generators and all the consumers stored in its state space, changing information using
+      the indices received in messages.
+    </p>
+    </td>
+  </tr>
+  
+  <tr><td class="consolemenu">&gt; Files and Dependencies_ </td></tr>
+  <tr>
+    <td class="fulltext">
+    . SmartGrid.java (<a href="SmartGrid.java">java</a>)<br />
+    . DPCHA Framework (<a href="dpcha.html">link</a>)<br />&nbsp;
+    </td>
+  </tr>
+  
+  <tr><td class="consolemenu">&gt; Links_ </td></tr>
+  <tr>
+    <td class="fulltext">
+    <table width="100%"><tr><td>&lt; <a href="index.html">Main Page</a> </td><td align=right><a href="dpcha.html">DPCHA Framework</a> &gt;</td></tr></table>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<meta charset='utf-8'>
+<!-- Based off of http://bl.ocks.org/donmccurdy/bd239cc355de227b1104503fc9d435d2 -->
+<title>Housing displacement hotspots @ Pittsburgh</title>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #002732;
+}
+</style>
+<script src='http://maps.google.com/maps/api/js?key=AIzaSyBSJNGwWgbQv7OIDG2YIvr3PlPd3YEcwpg'></script>
+<script src='https://d3js.org/d3.v4.min.js'></script>
+<body>
+<div id='map' style='width: 800px; height: 600px;'></div>
+<script>
+window.initMap = function() {
+  var el = document.querySelector('#map');
+  var google = window.google;
+  var centerpoint = new google.maps.LatLng(40.4519, -79.9543);
+
+  // What we scale d.oldUnits with to figure out radius.
+  var radiusScaleFactor = 2.0;
+  var unitsScaleFactor = 3;
+  
+  // Design values
+  var barWidth = 20; // Width of the vertical bars for hotspots
+  var barSpace = 10;  // Space between bars.
+  var vBarOffset = 20; // Vertical offset for bars compared to circle center
+  
+  // Colors
+  var bgColor = '#70A288';
+  var borderColor = '#04395E';
+  var goodColor = '#D5896F';
+  var badColor = '#DAB785';
+  var circleColor = '#70A288';
+  var textColor = '#DAB785';
+
+  // Dataset inside HTML file because d3 can't read from disk.
+  var dataset = null;
+  d3.json('hotspots.json', function (resp) {
+    dataset = resp;
+    initOverlay();
+  });
+
+  // To be honest, it's unclear why we are even using an OverlayView.
+  function SVGOverlay (map) {
+    this.map = map;
+    this.svg = null;
+
+    
+    // Make JS know that transformSVG is a class method
+    this.transformSVG = this.transformSVG.bind(this);
+
+    this.setMap(map);
+  }
+
+  // Subclass OverlayView.
+  SVGOverlay.prototype = new google.maps.OverlayView();
+
+  // Create new SVG, add it to body, and set it to the same
+  // size and position as the map
+  SVGOverlay.prototype.onAdd = function () {
+    this.svg = d3.select('body').append('svg')
+      .style('position', 'absolute')
+      .style('top', 0)
+      .style('left', 0)
+      .style('width', '800px')
+      .style('height', '600px')
+      .style('pointer-events', 'none');
+
+    // Hotspot groups
+    var gSelect = this.svg
+      .attr('width', 800)
+      .attr('height', 600)
+      .selectAll('g')
+      .data(dataset, function (d) { return d.id; })
+      .enter()
+        .append('g')
+        .attr('class', 'hotspot');
+    
+    // Hotspot circle
+    gSelect
+      .append('circle')
+      .attr('stroke', 'lightbrown')
+      .attr('stroke-width', '2px')
+      .attr('fill', circleColor)
+      .attr('r', function(d) {
+        d.r = Math.sqrt(d.oldUnits*radiusScaleFactor / Math.PI);
+        return d.r;
+      })
+      .attr('pointer-events', 'all')
+      .on('mouseover', enterHotspot)
+      .on('mouseout', exitHotspot);
+    
+    // Hotspot name
+    gSelect
+      .append('text')
+      .text((d) => d.name)
+      .attr('opacity', '0')
+      .attr('font-family', 'sans-serif')
+      .attr('text-anchor', 'begin')
+      .attr('alignment-baseline', 'hanging')
+      .attr('transform', (d) => 'translate(50, '+(d.r + barSpace)+')');
+    
+    // Data box
+    databox = gSelect
+      .append('g')
+      .attr('class', 'databox')
+      .attr('transform', (d) => 'translate(-'+(d.r + 2*barWidth+4*barSpace)+', '+vBarOffset+')scale(1,-1)');
+    
+    // Before bar
+    databox
+      .append('g')
+      .attr('class', 'before')
+      .attr('transform', 'translate('+barSpace+', '+barSpace+')');
+    
+    // Total # of units
+    databox.select('.before')
+      .append('rect')
+      .attr('class', 'notaffordable')
+      .attr('width', barWidth+'px')
+      .attr('height', '0px')
+      .attr('fill', badColor);
+    
+    // Affordable # of units
+    databox.select('.before')
+      .append('rect')
+      .attr('class', 'affordable')
+      .attr('width', barWidth+'px')
+      .attr('height', '0px')
+      .attr('fill', goodColor);
+    
+    // Text
+    databox.select('.before')
+      .append('text')
+      .text((d) => d.oldUnits)
+      .attr('transform', 'translate('+(barWidth/2)+', 0)scale(1,-1)')
+      .attr('fill', textColor)
+      .attr('opacity', '0')
+      .attr('font-family', 'sans-serif')
+      .attr('text-anchor', 'middle');
+    
+    
+    // After bar
+    databox
+      .append('g')
+      .attr('class', 'after')
+      .attr('transform', 'translate('+(barWidth+2*barSpace)+', '+barSpace+')');
+    
+    // Unaffordable # of units
+    databox.select('.after')
+      .append('rect')
+      .attr('class', 'notaffordable')
+      .attr('width', barWidth+'px')
+      .attr('height', '0px')
+      .attr('fill', badColor);
+    
+    // Affordable # of units
+    databox.select('.after')
+      .append('rect')
+      .attr('class', 'affordable')
+      .attr('width', barWidth+'px')
+      .attr('height', '0px')
+      .attr('fill', goodColor);
+    
+    databox.select('.after')
+      .append('text')
+      .text((d) => d.newUnits)
+      .attr('transform', 'translate('+(barWidth/2)+', 0)scale(1,-1)')
+      .attr('opacity', '0')
+      .attr('fill', textColor)
+      .attr('font-family', 'sans-serif')
+      .attr('text-anchor', 'middle');
+    
+    // Container box
+    databox
+      .insert('rect', ':first-child') // Make sure it's first so other stuff shows up on top
+      .attr('stroke', borderColor)
+      .attr('stroke-width', '3px')
+      .attr('fill', bgColor)
+      .attr('rx', '5')
+      .attr('ry','5')
+      .attr('width', 2*barWidth + 3*barSpace+'px')
+      .attr('height', '0px')
+      //.attr('transform', (d) => 'translate(0, '+barSpace+')');
+
+    this.transformSVG();
+    this.map.addListener('center_changed', this.transformSVG);
+  };
+
+  
+  function enterHotspot(d, i) {
+    hotspot = d3.select(this.parentNode);
+    
+    hotspot.select('text')
+      .transition().call(hTrans)
+      .attr('opacity', '1')
+      .attr('transform', (d) => 'translate(-20, '+(d.r + barSpace)+')');
+    
+    hotspot.select('rect')
+      .transition().call(hTrans)
+      .attr('height', (d) => Math.max(d.oldUnits, d.newUnits)/unitsScaleFactor + 2*barSpace + hotspot.select('.after text').node().getBBox().height + 'px');
+    
+    hotspot.select('.before .notaffordable')
+      .transition().call(hTrans)
+      .attr('height', (d) => d.oldUnits / unitsScaleFactor + 'px');
+      
+    hotspot.select('.before .affordable')
+      .transition().call(hTrans)
+      .attr('height', (d) => d.oldAfford / unitsScaleFactor + 'px');      
+    
+    hotspot.select('.before text')
+      .transition().call(hTrans)
+      .attr('opacity', '1')
+      .attr('transform', function(d) { return 'translate('+(barWidth/2)+', '+(d.oldUnits / unitsScaleFactor +5) +')scale(1,-1)'; } )
+    
+    hotspot.select('.after .notaffordable')
+      .transition().call(hTrans)
+      .attr('height', (d) => d.newUnits / unitsScaleFactor + 'px');
+      
+    hotspot.select('.after .affordable')
+      .transition().call(hTrans)
+      .attr('height', (d) => d.newAfford / unitsScaleFactor + 'px');
+    
+    hotspot.select('.after text')
+      .transition().call(hTrans)
+      .attr('opacity', '1')
+      .attr('transform', function(d) { return 'translate('+(barWidth/2)+', '+(d.newUnits / unitsScaleFactor +5) +')scale(1,-1)'; } );
+  }
+  
+  function exitHotspot(d, i) {
+    hotspot = d3.select(this.parentNode);
+    
+    hotspot.select('text')
+      .transition().call(hTrans)
+      .attr('opacity', '0')
+      .attr('transform', (d) => 'translate(50, '+(d.r + barSpace)+')');
+    
+    hotspot.select('rect')
+      .transition().call(hTrans)
+      .attr('height', '0px');
+    
+    hotspot.select('.before .notaffordable')
+      .transition().call(hTrans)
+      .attr('height', '0px');
+      
+    hotspot.select('.before .affordable')
+      .transition().call(hTrans)
+      .attr('height', '0px');      
+    
+    hotspot.select('.before text')
+      .transition().call(hTrans)
+      .attr('opacity', '0')
+      .attr('transform', function(d) { return 'translate('+(barWidth/2)+', 0)scale(1,-1)'; } )
+    
+    hotspot.select('.after .notaffordable')
+      .transition().call(hTrans)
+      .attr('height', '0px');
+      
+    hotspot.select('.after .affordable')
+      .transition().call(hTrans)
+      .attr('height', '0px');
+    
+    hotspot.select('.after text')
+      .transition().call(hTrans)
+      .attr('opacity', '0')
+      .attr('transform', function(d) { return 'translate('+(barWidth/2)+', 0)scale(1,-1)'; } );
+  }
+  
+  function hTrans(t) {
+    t.duration(100).ease(d3.easeSinInOut)
+  }
+  
+  
+  
+  // Whenever the map is panned, or zoomed, or anything else
+  // set the transform of the top-most <g> so that it matches
+  // Pittsburgh geometry.
+  // This has 0 delay and no animations.
+  SVGOverlay.prototype.transformSVG = function () {
+    var proj = this.getProjection();
+
+    this.svg.selectAll('.hotspot')
+      .attr('transform', function (d, i) {
+        var t = proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng));
+        return 'translate('+t.x+','+t.y+')';
+      });
+  };
+
+  SVGOverlay.prototype.onRemove = function () {
+    this.map.removeListener('center_changed', this.transformSVG);
+    this.svg.parentNode.removeChild(this.svg);
+    this.svg = null;
+  };
+
+  // This gets called whenever the map zoom level changes. We added a
+  // slight animation transition to fit better with Google Maps zoom.
+  SVGOverlay.prototype.draw = function () {
+    this.transformSVG();
+  };
+
+  var map = new google.maps.Map(el, {
+    center: centerpoint,
+    zoom: 12,
+    disableDefaultUI: false,
+    backgroundColor: '#002732'
+  });
+  
+  function initOverlay() {
+    var overlay = new SVGOverlay(map);
+  }
+};
+
+google.maps.event.addDomListener(window, 'load', initMap);
+</script>
+</body>

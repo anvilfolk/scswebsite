@@ -1,0 +1,44 @@
+body {
+font-family: "Courier New",Courier,monospace;
+font-size: 90%;
+}
+table {
+border-style: hidden;
+border-width: 1px;
+}
+td {
+  border-style: hidden;
+  border-width: 1px;
+  vertical-align:top;
+}
+.consolemenu {
+  border-style: solid;
+  border-width: 0px;
+  border-color: red;
+  background-color:black;
+  color: white;
+  padding: 2px;
+}
+
+.note{
+  font-size:75%
+}
+
+.title{
+  font-size:200%;
+  font-weight:bold;
+}
+
+.smalltitle{
+  font-size:175%;
+  font-weight:bold;
+}
+
+.fulltext{
+	text-align: justify;
+}
+
+a:link {color:green;text-decoration:none;}
+a:visited {color:green;text-decoration:none;}
+a:hover {color:red;text-decoration:none;}
+a:active {color:red;text-decoration:none;}

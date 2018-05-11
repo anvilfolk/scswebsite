@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- Based off of http://bl.ocks.org/donmccurdy/bd239cc355de227b1104503fc9d435d2 -->
+<title>Google Maps + D3 Overlay</title>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #002732;
+}
+</style>
+<script src="http://maps.google.com/maps/api/js?key=AIzaSyBSJNGwWgbQv7OIDG2YIvr3PlPd3YEcwpg"></script>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<body>
+<div id="map" style="width: 800px; height: 600px;"></div>
+<script>
+window.initMap = function() {
+  var scaleFactor = 2.5;
+
+  var el = document.querySelector('#map');
+  var google = window.google;
+
+  // Dataset inside HTML file because d3 can't read from disk.
+  SCIdataset = [{"name": "SCI Albion", "lat": 41.8786984, "lng": -80.3655008, "number": 285}, {"name": "SCI Benner Township", "lat": 40.8592307, "lng": -77.7802639, "number": 156}, {"name": "SCI Cambridge Springs", "lat": 41.7972119, "lng": -80.056107, "number": 47}, {"name": "SCI Camp Hill", "lat": 40.2176438, "lng": -76.9293698, "number": 85}, {"name": "SCI Chester", "lat": 39.8511889, "lng": -75.3537396, "number": 41}, {"name": "SCI Coal Township", "lat": 40.8061123, "lng": -76.5621386, "number": 210}, {"name": "SCI Dallas", "lat": 41.2731593, "lng": -76.0140904, "number": 443}, {"name": "SCI Fayette", "lat": 40.0002927, "lng": -79.9902319, "number": 387}, {"name": "SCI Forest", "lat": 41.4812042, "lng": -79.1025977, "number": 323}, {"name": "SCI Frackville", "lat": 40.7711373, "lng": -76.2104525, "number": 134}, {"name": "SCI Graterford", "lat": 40.7711373, "lng": -76.2104525, "number": 682}, {"name": "SCI Greene", "lat": 39.9060068, "lng": -80.1390404, "number": 383}, {"name": "SCI Houtzdale", "lat": 40.8124354, "lng": -78.3586756, "number": 213}, {"name": "SCI Huntingdon", "lat": 40.4909623, "lng": -78.0291656, "number": 403}, {"name": "SCI Laurel Highlands", "lat": 40.002657, "lng": -79.0452072, "number": 82}, {"name": "SCI Mahanoy", "lat": 40.7928726, "lng": -76.1828899, "number": 375}, {"name": "SCI Mercer", "lat": 41.2070367, "lng": -80.222581, "number": 4}, {"name": "SCI Muncy", "lat": 41.2025199, "lng": -76.8276822, "number": 159}, {"name": "SCI Pine Grove", "lat": 40.6477108, "lng": -79.1020659, "number": 22}, {"name": "SCI Pittsburgh", "lat": 40.4665515, "lng": -80.0482469, "number": 67}, {"name": "SCI Retreat", "lat": 41.187796, "lng": -76.0842021, "number": 93}, {"name": "SCI Rock View", "lat": 40.8498822, "lng": -77.7784561, "number": 292}, {"name": "SCI Smithfield", "lat": 40.4909623, "lng": -78.0291656, "number": 161}, {"name": "SCI Somerset", "lat": 39.9624976, "lng": -79.0384639, "number": 296}, {"name": "SCI Waymart", "lat": 41.574642, "lng": -75.4316961, "number": 38}]
+
+  // To be honest, it's unclear why we are even using an OverlayView.
+
+  function SVGOverlay (map) {
+    this.map = map;
+    this.svg = null;
+
+    // Make JS know that updateSVG is a class method
+    this.updateSVG = this.updateSVG.bind(this);
+
+    this.setMap(map);
+  }
+
+  // Subclass OverlayView.
+  SVGOverlay.prototype = new google.maps.OverlayView();
+
+  // Create new SVG, add it to body, and set it to the same
+  // size and position as the map
+  SVGOverlay.prototype.onAdd = function () {
+    this.svg = d3.select("body").append("svg")
+      .style("position", "absolute")
+      .style("top", 0)
+      .style("left", 0)
+      .style("width", "800px")
+      .style("height", "600px")
+      .style("pointer-events", "none");
+
+    var proj = this.getProjection();
+
+    this.svg
+        .attr('width', 800)
+        .attr('height', 600)
+      .selectAll('g')
+        .data(SCIdataset)
+        .enter()
+        .append('g')
+        .attr('class', 'SCI')
+        .each(function (d, i) {
+          var facility = d3.select(this);
+          facility.append('circle')
+            .attr('class', 'coords')
+            .attr('cx', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).x)
+            .attr('cy', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y);
+          facility.append('text')
+            .text((d) => d.name)
+            .attr('font-family', 'sans-serif')
+            .attr('alignment-baseline', 'central')
+            .attr('text-anchor', 'start');
+        });
+        
+    this.updateSVG();
+    this.map.addListener('center_changed', this.updateSVG);
+  };
+
+  SVGOverlay.prototype.updateSVG = function () {
+    var proj = this.getProjection();
+    var SCIs = this.svg
+      .selectAll('.SCI')
+    // Update circle coordinates
+    SCIs.select('circle')
+      .attr('cx', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).x)
+      .attr('cy', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y)
+      // Set the radius max to 50px. 682 is the max number of prisoners.
+      .attr('r', (d) => Math.sqrt(d.number*scaleFactor / Math.PI))
+      .attr('fill', "#AA3333")
+      .attr('opacity', "0.4");
+      
+    SCIs.select('text')
+      .attr('x', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).x + Math.sqrt(d.number*scaleFactor / Math.PI))
+      .attr('y', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y)
+  };
+
+  SVGOverlay.prototype.onRemove = function () {
+    this.map.removeListener('center_changed', this.updateSVG);
+    this.svg.parentNode.removeChild(this.svg);
+    this.svg = null;
+  };
+
+  SVGOverlay.prototype.draw = function () {
+    this.updateSVG();
+  };
+
+  var map = new google.maps.Map(el, {
+    center: new google.maps.LatLng(40.7063266,-77.620085),
+    zoom: 7,
+    disableDefaultUI: false,
+    backgroundColor: '#002732'
+  });
+    
+  var overlay = new SVGOverlay(map);
+};
+
+google.maps.event.addDomListener(window, 'load', initMap);
+</script>
+</body>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<!-- Based off of http://bl.ocks.org/donmccurdy/bd239cc355de227b1104503fc9d435d2 -->
+<title>Google Maps + D3 Overlay</title>
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #002732;
+}
+</style>
+<script src="http://maps.google.com/maps/api/js?key=AIzaSyBSJNGwWgbQv7OIDG2YIvr3PlPd3YEcwpg"></script>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<body>
+<div id="map" style="width: 800px; height: 600px;"></div>
+<script>
+window.initMap = function() {
+  var scaleFactor = 2.5;
+
+  var el = document.querySelector('#map');
+  var google = window.google;
+
+  // Dataset inside HTML file because d3 can't read from disk.
+  SCIdataset = [{"lat": 39.8522417, "lng": -77.2864879, "name": "ADAMS", "number": 14}, {"lat": 40.4450813, "lng": -80.0087746, "name": "ALLEGHENY", "number": 545}, {"lat": 40.8790518, "lng": -79.4703885, "name": "ARMSTRONG", "number": 7}, {"lat": 40.6367812, "lng": -80.365865, "name": "BEAVER", "number": 35}, {"lat": 39.986955, "lng": -78.5660852, "name": "BEDFORD", "number": 5}, {"lat": 40.3451566, "lng": -75.9927652, "name": "BERKS", "number": 115}, {"lat": 40.4531318, "lng": -78.3842227, "name": "BLAIR", "number": 23}, {"lat": 41.8362502, "lng": -76.5488232, "name": "BRADFORD", "number": 11}, {"lat": 40.4107964, "lng": -75.2479061, "name": "BUCKS", "number": 111}, {"lat": 40.9115243, "lng": -79.8296743, "name": "BUTLER", "number": 19}, {"lat": 40.4894231, "lng": -78.7476208, "name": "CAMBRIA", "number": 15}, {"lat": 40.901975, "lng": -75.667356, "name": "CARBON", "number": 11}, {"lat": 40.8765649, "lng": -77.8367282, "name": "CENTRE", "number": 15}, {"lat": 40.0010204, "lng": -75.8069082, "name": "CHESTER", "number": 79}, {"lat": 41.1982095, "lng": -79.4703885, "name": "CLARION", "number": 4}, {"lat": 40.9519685, "lng": -78.5660852, "name": "CLEARFIELD", "number": 18}, {"lat": 41.3331937, "lng": -77.6536125, "name": "CLINTON", "number": 5}, {"lat": 41.0274439, "lng": -76.3637285, "name": "COLUMBIA", "number": 5}, {"lat": 41.6661391, "lng": -80.2767327, "name": "CRAWFORD", "number": 20}, {"lat": 40.1299841, "lng": -77.2405153, "name": "CUMBERLAND", "number": 34}, {"lat": 40.2734277, "lng": -76.7336521, "name": "DAUPHIN", "number": 177}, {"lat": 39.907793, "lng": -75.3878525, "name": "DELAWARE", "number": 190}, {"lat": 41.4284924, "lng": -78.5660852, "name": "ELK", "number": 5}, {"lat": 42.0521954, "lng": -80.1875065, "name": "ERIE", "number": 78}, {"lat": 39.9272324, "lng": -79.6502105, "name": "FAYETTE", "number": 43}, {"lat": 41.5341012, "lng": -79.2451149, "name": "FOREST", "number": 4}, {"lat": 39.8923855, "lng": -77.6536125, "name": "FRANKLIN", "number": 25}, {"lat": 39.8113005, "lng": -80.1875065, "name": "GREENE", "number": 8}, {"lat": 40.4155273, "lng": -78.0195387, "name": "HUNTINGDON", "number": 10}, {"lat": 40.6850762, "lng": -79.1096901, "name": "INDIANA", "number": 15}, {"lat": 41.147013, "lng": -78.9288242, "name": "JEFFERSON", "number": 9}, {"lat": 40.5521642, "lng": -77.4242972, "name": "JUNIATA", "number": 5}, {"lat": 41.4421199, "lng": -75.5742467, "name": "LACKAWANNA", "number": 36}, {"lat": 40.0466571, "lng": -76.1783739, "name": "LANCASTER", "number": 121}, {"lat": 40.957855, "lng": -80.365865, "name": "LAWRENCE", "number": 14}, {"lat": 40.3666686, "lng": -76.5025742, "name": "LEBANON", "number": 30}, {"lat": 40.6519679, "lng": -75.5742467, "name": "LEHIGH", "number": 93}, {"lat": 41.1404353, "lng": -75.9927652, "name": "LUZERNE", "number": 70}, {"lat": 41.2720004, "lng": -77.1024902, "name": "LYCOMING", "number": 17}, {"lat": 41.8133351, "lng": -78.4751945, "name": "MCKEAN", "number": 8}, {"lat": 41.2619821, "lng": -80.1875065, "name": "MERCER", "number": 21}, {"lat": 40.652279, "lng": -77.6077865, "name": "MIFFLIN", "number": 2}, {"lat": 41.0458376, "lng": -75.2479061, "name": "MONROE", "number": 37}, {"lat": 40.2290075, "lng": -75.3878525, "name": "MONTGOMERY", "number": 128}, {"lat": 41.0262303, "lng": -76.6874701, "name": "MONTOUR", "number": 1}, {"lat": 40.7749283, "lng": -75.294569, "name": "NORTHAMPTON", "number": 68}, {"lat": 40.8674339, "lng": -76.6874701, "name": "NORTHUMBERLAND", "number": 17}, {"lat": 40.8772893, "lng": -75.5446904, "name": "OUT OF STATE", "number": 8}, {"lat": 40.371376, "lng": -77.2405153, "name": "PERRY", "number": 7}, {"lat": 40.0152766, "lng": -75.1311874, "name": "PHILADELPHIA", "number": 2776}, {"lat": 41.3361875, "lng": -75.0611147, "name": "PIKE", "number": 9}, {"lat": 41.6682559, "lng": -77.8367282, "name": "POTTER", "number": 5}, {"lat": 40.6873058, "lng": -76.1783739, "name": "SCHUYLKILL", "number": 27}, {"lat": 40.750748, "lng": -77.0564464, "name": "SNYDER", "number": 3}, {"lat": 40.022493, "lng": -78.9288242, "name": "SOMERSET", "number": 6}, {"lat": 41.4781004, "lng": -76.5025742, "name": "SULLIVAN", "number": 1}, {"lat": 41.745553, "lng": -75.8069082, "name": "SUSQUEHANNA", "number": 3}, {"lat": 41.7649466, "lng": -77.2864879, "name": "TIOGA", "number": 9}, {"lat": 40.9894888, "lng": -77.0564464, "name": "UNION", "number": 3}, {"lat": 41.3896611, "lng": -79.8296743, "name": "VENANGO", "number": 10}, {"lat": 41.8143331, "lng": -79.2902133, "name": "WARREN", "number": 6}, {"lat": 40.1367719, "lng": -80.1875065, "name": "WASHINGTON", "number": 37}, {"lat": 41.6738865, "lng": -75.2479061, "name": "WAYNE", "number": 11}, {"lat": 40.2353963, "lng": -79.4703885, "name": "WESTMORELAND", "number": 55}, {"lat": 41.5004703, "lng": -76.0391909, "name": "WYOMING", "number": 4}, {"lat": 39.9512496, "lng": -76.7336521, "name": "YORK", "number": 113}]
+
+  // To be honest, it's unclear why we are even using an OverlayView.
+
+  function SVGOverlay (map) {
+    this.map = map;
+    this.svg = null;
+
+    // Make JS know that updateSVG is a class method
+    this.updateSVG = this.updateSVG.bind(this);
+
+    this.setMap(map);
+  }
+
+  // Subclass OverlayView.
+  SVGOverlay.prototype = new google.maps.OverlayView();
+
+  // Create new SVG, add it to body, and set it to the same
+  // size and position as the map
+  SVGOverlay.prototype.onAdd = function () {
+    this.svg = d3.select("body").append("svg")
+      .style("position", "absolute")
+      .style("top", 0)
+      .style("left", 0)
+      .style("width", "800px")
+      .style("height", "600px")
+      .style("pointer-events", "none");
+
+    var proj = this.getProjection();
+
+    this.svg
+        .attr('width', 800)
+        .attr('height', 600)
+      .selectAll('g')
+        .data(SCIdataset)
+        .enter()
+        .append('g')
+        .attr('class', 'SCI')
+        .each(function (d, i) {
+          var facility = d3.select(this);
+          facility.append('circle')
+            .style("pointer-events", "all")
+            .attr('class', 'coords')
+            .attr('cx', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).x)
+            .attr('cy', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y)
+            .on("mouseover", function (d, i) {
+                d3.select(this.parentNode).select("text")
+                  .attr('y', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y + 20)
+                  .transition()
+                    .duration(150)
+                    .ease(d3.easeSinInOut)
+                    .attr('opacity', '1.0')
+                    .attr('y', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y);
+                
+                var curR = parseFloat(d3.select(this).attr('r'));
+
+                d3.select(this).attr('r', (d) => Math.sqrt(d.number*scaleFactor / Math.PI))
+                               .transition().duration(50).ease(d3.easeSinInOut).attr('r', curR*1.3).attr('opacity', '0.9')
+                               .transition().duration(50).ease(d3.easeSinInOut).attr('r', curR*1.1)
+                               .transition().duration(50).ease(d3.easeSinInOut).attr('r', curR*1.2);
+              }
+            )
+            .on("mouseout", function (d, i) {
+                d3.select(this).transition()
+                               .ease(d3.easeSinOut)
+                               .duration(150)
+                               .attr('r', (d) => Math.sqrt(d.number*scaleFactor / Math.PI))
+                               .attr('opacity', '0.6');
+              
+                d3.select(this.parentNode).select("text")
+                  .transition()
+                  .duration(150)
+                  .ease(d3.easeSinOut)
+                  .attr('y', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y - 20)
+                  .attr('opacity', '0');
+              }
+            );
+          facility.append('text')
+            .text((d) => ''+d.name+' (' + d.number + ')')
+            .attr('font-family', 'sans-serif')
+            .attr('font-weight', 'bold')
+            .attr('alignment-baseline', 'central')
+            .attr('text-anchor', 'start')
+            .attr('opacity', '0');
+        });
+        
+    this.updateSVG();
+    this.map.addListener('center_changed', this.updateSVG);
+  };
+
+
+
+  SVGOverlay.prototype.updateSVG = function () {
+    var proj = this.getProjection();
+    var SCIs = this.svg
+      .selectAll('.SCI')
+    // Update circle coordinates
+    SCIs.select('circle')
+      .attr('cx', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).x)
+      .attr('cy', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y)
+      // Set the radius max to 50px. 682 is the max number of prisoners.
+      .attr('r', (d) => Math.sqrt(d.number*scaleFactor / Math.PI))
+      .attr('fill', "#AA3333")
+      .attr('opacity', "0.6");
+      
+    SCIs.select('text')
+      .attr('x', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).x + Math.sqrt(d.number*scaleFactor / Math.PI)*1.3)
+      .attr('y', (d) => proj.fromLatLngToContainerPixel(new google.maps.LatLng(d.lat, d.lng)).y)
+  };
+
+  SVGOverlay.prototype.onRemove = function () {
+    this.map.removeListener('center_changed', this.updateSVG);
+    this.svg.parentNode.removeChild(this.svg);
+    this.svg = null;
+  };
+
+  SVGOverlay.prototype.draw = function () {
+    this.updateSVG();
+  };
+
+  var map = new google.maps.Map(el, {
+    center: new google.maps.LatLng(40.7063266,-77.620085),
+    zoom: 7,
+    disableDefaultUI: false,
+    backgroundColor: '#002732'
+  });
+    
+  var overlay = new SVGOverlay(map);
+};
+
+google.maps.event.addDomListener(window, 'load', initMap);
+</script>
+</body>
